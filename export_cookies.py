@@ -57,7 +57,7 @@ def find_chrome_path():
 
 
 def get_data_dir():
-    """获取 Chrome 数据目录路径（每个平台不同）"""
+    """获取 Chrome 配置目录路径（每个平台不同），用于解析 User Data 与 profile 名"""
     home = os.path.expanduser("~")
     if sys.platform == "win32":
         return os.path.join(home, "AppData", "Local", "Google", "Chrome", "User Data", "Profile 1")
@@ -68,50 +68,47 @@ def get_data_dir():
 
 
 def main():
+    if sys.platform == "win32":
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except (AttributeError, OSError):
+            pass
     print("=" * 60)
     print("知乎 Cookie 导出工具（Chrome Profile 模式）")
     print("=" * 60)
     print()
 
-    data_dir = get_data_dir()
-
-    # 查找 Chrome
+    profile_path = get_data_dir()
+    user_data_dir = os.path.dirname(profile_path)
+    profile_name = os.path.basename(profile_path)
     chrome_path = find_chrome_path()
 
     with sync_playwright() as p:
-        if chrome_path and os.path.exists(data_dir):
-            print(f"检测到 Chrome 数据目录: {data_dir}")
-            print("将使用已登录的 Chrome Profile 启动...")
-            print()
-
+        # launch_persistent_context 的 user_data_dir 必须是「User Data」根目录，profile 用参数指定
+        browser = None
+        if chrome_path and os.path.isdir(user_data_dir):
+            print(f"使用 Chrome 用户数据: {user_data_dir}（配置: {profile_name}）")
             try:
-                # 尝试使用已有 Chrome 数据（可能已登录）
-                browser = p.chromium.launch(
-                    executable_path=chrome_path,
-                    args=[
-                        f"--user-data-dir={os.path.dirname(data_dir)}",
-                        f"--profile-directory={os.path.basename(data_dir)}",
-                        "--no-first-run",
-                        "--no-default-browser-check",
-                    ],
+                context = p.chromium.launch_persistent_context(
+                    user_data_dir,
+                    channel="chrome",
                     headless=False,
+                    args=[f"--profile-directory={profile_name}"],
                 )
-                context = browser.contexts[0]
-                page = context.new_page()
-
             except Exception as e:
-                print(f"使用 Chrome Profile 失败: {e}")
-                print("将使用临时 Profile（需要重新登录）...")
+                print(f"⚠️  无法以 Profile 模式启动 Chrome（可能正被其他窗口占用）: {e}")
+                print("   改用 Playwright 自带 Chromium（临时环境，需自行登录）")
                 browser = p.chromium.launch(headless=False)
-                context = browser.contexts[0]
-                page = context.new_page()
+                context = browser.new_context()
         else:
-            print("未找到 Chrome 或数据目录，使用临时 Profile")
-            print("（首次使用需要在浏览器中手动登录知乎）")
-            print()
+            if not chrome_path:
+                print("未找到本机 Chrome，使用 Playwright Chromium（临时环境）")
+            else:
+                print(f"未找到用户数据目录: {user_data_dir}，使用 Playwright Chromium")
             browser = p.chromium.launch(headless=False)
-            context = browser.contexts[0]
-            page = context.new_page()
+            context = browser.new_context()
+
+        page = context.pages[0] if context.pages else context.new_page()
 
         print("正在打开知乎...")
         page.goto("https://www.zhihu.com/", timeout=30000)
@@ -179,7 +176,10 @@ def main():
         except Exception as e:
             print(f"⚠️  验证出错: {e}")
 
-        browser.close()
+        if browser is not None:
+            browser.close()
+        else:
+            context.close()
 
     print()
     print("完成！可以运行 main.py 开始发帖了。")
