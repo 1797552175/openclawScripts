@@ -69,15 +69,17 @@ class ZhihuLogin:
     def is_logged_in(self) -> bool:
         """检查是否已登录（通过访问个人资料页面）"""
         try:
+            # 知乎新版 API 入口是 api.zhihu.com
             resp = self.session.get(
-                f"{self.BASE_URL}/api/v4/people/self",
+                "https://api.zhihu.com/people/self",
                 headers=self.API_HEADERS,
                 timeout=10,
             )
             if resp.status_code == 200:
                 data = resp.json()
-                if data.get("type") == "people":
-                    print(f"已登录: {data.get('name', 'Unknown')}")
+                name = data.get("name", "Unknown")
+                if name:
+                    print(f"已登录: {name}")
                     return True
             return False
         except Exception as e:

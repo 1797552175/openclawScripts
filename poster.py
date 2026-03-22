@@ -16,6 +16,15 @@ class ZhihuPoster:
         "User-Agent": USER_AGENT,
         "Referer": "https://www.zhihu.com/",
         "Origin": "https://www.zhihu.com",
+        "x-api-version": "3.0.88",
+        "x-app-za": "OS=WebPC&Platform=Windows&DeviceId=123456789",
+        "x-zse-96": "3.0",
+        "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-site",
     }
 
     # 已知的热门问题 ID（可以后续扩展）
@@ -39,8 +48,8 @@ class ZhihuPoster:
         """
         print(f"正在发布文章: {title}")
 
-        # 知乎发文章 API
-        url = f"{self.BASE_URL}/api/v4/articles"
+        # 知乎发文章 API - api.zhihu.com
+        url = "https://api.zhihu.com/articles"
 
         data = {
             "title": title,
@@ -85,7 +94,7 @@ class ZhihuPoster:
         """
         print(f"正在发布回答到问题 {question_id}: {title[:30] if title else 'N/A'}...")
 
-        url = f"{self.BASE_URL}/api/v4/answers"
+        url = "https://api.zhihu.com/answers"
 
         data = {
             "question_id": int(question_id),
@@ -129,7 +138,7 @@ class ZhihuPoster:
         """
         print(f"正在发布想法...")
 
-        url = f"{self.BASE_URL}/api/v4/ideas"
+        url = "https://api.zhihu.com/favorites"
 
         data = {
             "content": content,
